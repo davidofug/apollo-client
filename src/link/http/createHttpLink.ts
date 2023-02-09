@@ -129,6 +129,9 @@ export const createHttpLink = (linkOptions: HttpOptions = {}) => {
     const definitionIsMutation = (d: DefinitionNode) => {
       return d.kind === 'OperationDefinition' && d.operation === 'mutation';
     };
+    const definitionIsSubscription = (d: DefinitionNode) => {
+      return d.kind === 'OperationDefinition' && d.operation === 'subscription';
+    };
     if (
       useGETForQueries &&
       !operation.query.definitions.some(definitionIsMutation)
@@ -137,7 +140,10 @@ export const createHttpLink = (linkOptions: HttpOptions = {}) => {
     }
 
     // does not match custom directives beginning with @defer
-    if (hasDirectives(['defer'], operation.query)) {
+    if (
+      hasDirectives(['defer'], operation.query) ||
+      operation.query.definitions.some(definitionIsSubscription)
+    ) {
       options.headers = options.headers || {};
       options.headers.accept = "multipart/mixed; deferSpec=20220824, application/json";
     }
