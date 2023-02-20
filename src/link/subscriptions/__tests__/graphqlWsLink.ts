@@ -1,8 +1,9 @@
 import { Client } from "graphql-ws";
-import { ExecutionResult } from "graphql";
+import { ExecutionResult, GraphQLError } from "graphql";
 import gql from "graphql-tag";
 
 import { Observable } from "../../../utilities";
+import { ApolloError } from "../../../errors";
 import { execute } from "../../core";
 import { GraphQLWsLink } from "..";
 
@@ -103,5 +104,69 @@ describe("GraphQLWSlink", () => {
 
     const obs = execute(link, { query: subscription });
     await expect(observableToArray(obs)).resolves.toEqual(results);
+  });
+
+  describe("should reject", () => {
+    it("with Error on subscription error via Error", async () => {
+      const subscribe: Client["subscribe"] = (_, sink) => {
+        sink.error(new Error("an error occurred"));
+        return () => {};
+      };
+      const client = mockClient(subscribe);
+      const link = new GraphQLWsLink(client);
+
+      const obs = execute(link, { query: subscription });
+      await expect(observableToArray(obs)).rejects.toEqual(
+        new Error("an error occurred")
+      );
+    });
+
+    it("with Error on subscription error via CloseEvent", async () => {
+      const subscribe: Client["subscribe"] = (_, sink) => {
+        sink.error(
+          new CloseEvent("an error occurred", { code: 1006, reason: "abnormally closed" })
+        );
+        return () => {};
+      };
+      const client = mockClient(subscribe);
+      const link = new GraphQLWsLink(client);
+
+      const obs = execute(link, { query: subscription });
+      await expect(observableToArray(obs)).rejects.toEqual(
+        new Error("Socket closed with event 1006 abnormally closed")
+      );
+    });
+
+    it("with ApolloError on subscription error via Event (network disconnected)", async () => {
+      const subscribe: Client["subscribe"] = (_, sink) => {
+        sink.error(new Event("an error occurred"));
+        return () => {};
+      };
+      const client = mockClient(subscribe);
+      const link = new GraphQLWsLink(client);
+
+      const obs = execute(link, { query: subscription });
+      await expect(observableToArray(obs)).rejects.toEqual(
+        new ApolloError({
+          networkError: new Error("Error message not found."),
+        })
+      );
+    });
+
+    it("with ApolloError on subscription error via GraphQLError[]", async () => {
+      const subscribe: Client["subscribe"] = (_, sink) => {
+        sink.error([new GraphQLError("Foo bar.")]);
+        return () => {};
+      };
+      const client = mockClient(subscribe);
+      const link = new GraphQLWsLink(client);
+
+      const obs = execute(link, { query: subscription });
+      await expect(observableToArray(obs)).rejects.toEqual(
+        new ApolloError({
+          graphQLErrors: [new GraphQLError("Foo bar.")],
+        })
+      );
+    });
   });
 });

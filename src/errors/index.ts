@@ -21,7 +21,7 @@ const generateErrorMessage = (err: ApolloError) => {
     const errors = ((err.graphQLErrors || []) as readonly Error[])
       .concat(err.clientErrors || []);
     errors.forEach((error: Error) => {
-      const errorMessage = error
+      const errorMessage = error && error.message
         ? error.message
         : 'Error message not found.';
       message += `${errorMessage}\n`;
