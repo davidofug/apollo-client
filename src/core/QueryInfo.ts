@@ -247,7 +247,7 @@ export class QueryInfo {
           // this method, and are handled by calling oq.reobserve(). If this
           // reobservation is spurious, isDifferentFromLastResult still has a
           // chance to catch it before delivery to ObservableQuery subscribers.
-          reobserveCacheFirst(oq);
+          reobserveCacheFirst(oq, true);
         }
       });
     } else {

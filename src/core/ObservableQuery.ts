@@ -785,6 +785,7 @@ Did you mean to call refetch(variables) instead of refetch({ variables })?`);
   public reobserve(
     newOptions?: Partial<WatchQueryOptions<TVariables, TData>>,
     newNetworkStatus?: NetworkStatus,
+    keepOldSubscription = false
   ): Promise<ApolloQueryResult<TData>> {
     this.isTornDown = false;
 
@@ -798,7 +799,9 @@ Did you mean to call refetch(variables) instead of refetch({ variables })?`);
       newNetworkStatus === NetworkStatus.fetchMore ||
       // Polling uses a disposable Concast so the polling options (which force
       // fetchPolicy to be "network-only" or "no-cache") won't override the original options.
-      newNetworkStatus === NetworkStatus.poll;
+      newNetworkStatus === NetworkStatus.poll ||
+      keepOldSubscription
+      ;
 
     // Save the old variables, since Object.assign may modify them below.
     const oldVariables = this.options.variables;
@@ -942,6 +945,7 @@ fixObservableSubclass(ObservableQuery);
 // "standby", or "no-cache"), we call this.reobserve() as usual.
 export function reobserveCacheFirst<TData, TVars extends OperationVariables>(
   obsQuery: ObservableQuery<TData, TVars>,
+  keepOldSubscription?: boolean
 ) {
   const { fetchPolicy, nextFetchPolicy } = obsQuery.options;
 
@@ -965,10 +969,10 @@ export function reobserveCacheFirst<TData, TVars extends OperationVariables>(
         // Otherwise go back to the original this.options.fetchPolicy.
         return fetchPolicy!;
       },
-    });
+    }, undefined, keepOldSubscription);
   }
 
-  return obsQuery.reobserve();
+  return obsQuery.reobserve(undefined, undefined, keepOldSubscription);
 }
 
 function defaultSubscriptionObserverErrorCallback(error: ApolloError) {
